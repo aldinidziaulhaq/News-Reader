@@ -16,6 +16,8 @@ import requests
 import streamlit as st
 import trafilatura
 from dateutil import parser as date_parser
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -57,6 +59,29 @@ REQUEST_HEADERS = {
 
 CACHE_TTL_LIST = 600      # 10 menit untuk daftar berita
 CACHE_TTL_ARTICLE = 3600  # 60 menit untuk isi artikel
+REQUEST_TIMEOUT = 10      # detik
+MAX_RETRIES = 2
+
+
+# --------------------------------------------------------------------------
+# SESSION HTTP DENGAN RETRY
+# --------------------------------------------------------------------------
+def _build_session() -> requests.Session:
+    session = requests.Session()
+    retry = Retry(
+        total=MAX_RETRIES,
+        backoff_factor=1.0,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    session.headers.update(REQUEST_HEADERS)
+    return session
+
+
+_SESSION = _build_session()
 
 
 # --------------------------------------------------------------------------
@@ -64,14 +89,21 @@ CACHE_TTL_ARTICLE = 3600  # 60 menit untuk isi artikel
 # --------------------------------------------------------------------------
 @st.cache_data(ttl=CACHE_TTL_LIST, show_spinner=False)
 def fetch_rss(url: str):
-    """Ambil dan parse RSS feed. Mengembalikan list of dict entri berita."""
+    """
+    Ambil dan parse RSS feed. Mengembalikan list of dict entri berita.
+    Jika gagal (timeout, koneksi ditolak/reset, dsb), kembalikan list kosong
+    tanpa membuat aplikasi crash.
+    """
     try:
-        resp = requests.get(url, headers=REQUEST_HEADERS, timeout=10)
+        resp = _SESSION.get(url, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
+    except Exception:
+        return []
+
+    try:
         feed = feedparser.parse(resp.content)
     except Exception:
-        # fallback: biarkan feedparser coba ambil langsung
-        feed = feedparser.parse(url)
+        return []
 
     entries = []
     for e in feed.entries:
@@ -230,15 +262,29 @@ def render_article_list():
         return
 
     all_articles = []
+    failed_sources = []
     progress = st.progress(0.0, text="Mengambil berita...")
     for i, source_name in enumerate(selected_sources):
         url = RSS_SOURCES[source_name]
-        entries = fetch_rss(url)
+        try:
+            entries = fetch_rss(url)
+        except Exception:
+            entries = []
+        if not entries:
+            failed_sources.append(source_name)
         for e in entries:
             e["source"] = source_name
         all_articles.extend(entries)
         progress.progress((i + 1) / len(selected_sources), text=f"Mengambil berita dari {source_name}...")
     progress.empty()
+
+    if failed_sources:
+        st.warning(
+            "⚠️ Gagal mengambil berita dari: "
+            + ", ".join(failed_sources)
+            + ". Sumber ini mungkin sedang tidak dapat diakses, atau memblokir "
+            "permintaan otomatis. Coba lagi beberapa saat, atau pilih sumber lain."
+        )
 
     # Filter berdasarkan kata kunci
     if keyword:
