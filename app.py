@@ -50,11 +50,29 @@ RSS_SOURCES = {
     "Republika": "https://www.republika.co.id/rss",
 }
 
+# Domain resmi tiap sumber — dipakai sebagai fallback pencarian via Google News RSS
+# jika feed RSS resmi diblokir (403/hang) oleh server sumber (mis. karena IP cloud/data center).
+SOURCE_DOMAINS = {
+    "Detik": "detik.com",
+    "Kompas": "kompas.com",
+    "CNN Indonesia": "cnnindonesia.com",
+    "Antara News": "antaranews.com",
+    "Tempo Nasional": "tempo.co",
+    "Republika": "republika.co.id",
+}
+
+GOOGLE_NEWS_FALLBACK_TEMPLATE = (
+    "https://news.google.com/rss/search?q=site:{domain}+when:2d&hl=id&gl=ID&ceid=ID:id"
+)
+
 REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    )
+    ),
+    "Accept": "application/rss+xml, application/xml, text/xml, */*;q=0.8",
+    "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Connection": "keep-alive",
 }
 
 CACHE_TTL_LIST = 600      # 10 menit untuk daftar berita
@@ -87,24 +105,9 @@ _SESSION = _build_session()
 # --------------------------------------------------------------------------
 # FUNGSI BANTUAN (CACHED)
 # --------------------------------------------------------------------------
-@st.cache_data(ttl=CACHE_TTL_LIST, show_spinner=False)
-def fetch_rss(url: str):
-    """
-    Ambil dan parse RSS feed. Mengembalikan list of dict entri berita.
-    Jika gagal (timeout, koneksi ditolak/reset, dsb), kembalikan list kosong
-    tanpa membuat aplikasi crash.
-    """
-    try:
-        resp = _SESSION.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-    except Exception:
-        return []
-
-    try:
-        feed = feedparser.parse(resp.content)
-    except Exception:
-        return []
-
+def _parse_feed_entries(raw_content: bytes):
+    """Ubah konten RSS mentah menjadi list of dict entri berita."""
+    feed = feedparser.parse(raw_content)
     entries = []
     for e in feed.entries:
         published = None
@@ -137,6 +140,49 @@ def fetch_rss(url: str):
             }
         )
     return entries
+
+
+def _raw_fetch(url: str):
+    """Ambil konten mentah sebuah URL. Mengembalikan bytes atau None jika gagal."""
+    try:
+        resp = _SESSION.get(url, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        return resp.content
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=CACHE_TTL_LIST, show_spinner=False)
+def fetch_rss(url: str, fallback_domain: str = None):
+    """
+    Ambil dan parse RSS feed dari `url`. Jika gagal atau hasilnya kosong
+    (mis. sumber memblokir permintaan dari server/cloud), otomatis coba
+    ambil berita dari sumber yang sama melalui Google News RSS sebagai
+    fallback (jika `fallback_domain` diberikan).
+    Tidak pernah melempar exception — mengembalikan list kosong jika semua gagal.
+    """
+    raw = _raw_fetch(url)
+    entries = []
+    if raw:
+        try:
+            entries = _parse_feed_entries(raw)
+        except Exception:
+            entries = []
+
+    if entries:
+        return entries
+
+    # --- Fallback: Google News RSS (jarang diblokir, cocok untuk deploy cloud) ---
+    if fallback_domain:
+        gnews_url = GOOGLE_NEWS_FALLBACK_TEMPLATE.format(domain=fallback_domain)
+        raw_fallback = _raw_fetch(gnews_url)
+        if raw_fallback:
+            try:
+                return _parse_feed_entries(raw_fallback)
+            except Exception:
+                return []
+
+    return []
 
 
 @st.cache_data(ttl=CACHE_TTL_ARTICLE, show_spinner=False)
@@ -266,8 +312,9 @@ def render_article_list():
     progress = st.progress(0.0, text="Mengambil berita...")
     for i, source_name in enumerate(selected_sources):
         url = RSS_SOURCES[source_name]
+        fallback_domain = SOURCE_DOMAINS.get(source_name)
         try:
-            entries = fetch_rss(url)
+            entries = fetch_rss(url, fallback_domain)
         except Exception:
             entries = []
         if not entries:
