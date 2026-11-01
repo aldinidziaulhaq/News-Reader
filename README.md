@@ -1,33 +1,29 @@
-# 📰 News Reader — Aplikasi Berita dengan Streamlit
+# News Reader
 
-Aplikasi web sederhana berbasis **Streamlit** untuk membaca berita terkini dari
-berbagai sumber RSS media massa Indonesia (Detik, Kompas, CNN Indonesia,
-Antara News, Tempo, Republika), lengkap dengan tampilan **isi artikel penuh**,
-pencarian kata kunci, dan pengurutan berita.
+Web sederhana berbasis **Streamlit** untuk membaca berita terkini dari berbagai sumber media massa Indonesia (Detik, Kompas, CNN Indonesia,Antara News, Tempo, Republika), lengkap dengan tampilan **isi artikel penuh**,pencarian kata kunci, dan pengurutan berita.
 
-## ✨ Fitur
+## Fitur
 
-- 📡 Mengambil berita secara real-time dari beberapa sumber RSS sekaligus
-- 🔎 Pencarian berita berdasarkan kata kunci (judul & ringkasan)
-- ↕️ Pengurutan berita: terbaru, terlama, atau alfabetis
-- 📄 Menampilkan **isi artikel lengkap** (bukan hanya ringkasan) menggunakan ekstraksi konten otomatis
-- 🖼️ Menampilkan gambar/thumbnail artikel jika tersedia
-- ⚡ Caching otomatis agar aplikasi tetap cepat dan tidak membebani sumber berita
-- 🎨 Tampilan responsif dengan grid 2 kolom dan tema yang dapat dikustomisasi
+- Mengambil berita secara real-time dari beberapa sumber sekaligus
+- Pencarian berita berdasarkan kata kunci (judul & ringkasan)
+- Pengurutan berita: terbaru, terlama, atau alfabetis
+- Menampilkan **isi artikel lengkap** (bukan hanya ringkasan) menggunakan ekstraksi konten otomatis
+- Menampilkan gambar/thumbnail artikel jika tersedia
+- Caching otomatis agar aplikasi tetap cepat dan tidak membebani sumber berita
+- Tampilan responsif dengan grid 2 kolom dan tema yang dapat dikustomisasi
 
-## 🗂️ Struktur Proyek
+## Struktur Proyek
 
 ```
 news-reader-app/
-├── app.py                     # Kode utama aplikasi Streamlit
-├── requirements.txt           # Daftar dependency Python
-├── .streamlit/
-│   └── config.toml            # Konfigurasi tema Streamlit
-├── .gitignore
+├── app.py                   
+├── requirements.txt           
+├── link.txt
+├── config.toml            
 └── README.md
 ```
 
-## 🚀 Menjalankan Secara Lokal
+## Menjalankan Secara Lokal
 
 1. **Clone repository ini**
 
@@ -40,7 +36,7 @@ news-reader-app/
 
    ```bash
    python -m venv venv
-   source venv/bin/activate      # Windows: venv\Scripts\activate
+   source venv/bin/activate    
    ```
 
 3. **Install dependency**
@@ -57,7 +53,7 @@ news-reader-app/
 
 5. Buka browser ke `http://localhost:8501`
 
-## ☁️ Deploy ke Streamlit Community Cloud (via GitHub)
+## Deploy ke Streamlit Community Cloud (via GitHub)
 
 1. **Push kode ke repository GitHub**
 
@@ -92,7 +88,7 @@ news-reader-app/
 6. Setiap kali Anda melakukan `git push` ke branch `main`, Streamlit Cloud
    akan otomatis melakukan **redeploy**.
 
-## ⚙️ Konfigurasi Tambahan (Opsional)
+## Konfigurasi Tambahan (Opsional)
 
 - **Menambah sumber berita baru**: edit dictionary `RSS_SOURCES` di `app.py`
   dan tambahkan pasangan `"Nama Sumber": "URL RSS"`.
@@ -100,7 +96,7 @@ news-reader-app/
   `CACHE_TTL_ARTICLE` (isi artikel penuh) di bagian atas `app.py` — dalam satuan detik.
 - **Mengganti tema warna**: ubah nilai pada `.streamlit/config.toml`.
 
-## 🧩 Teknologi yang Digunakan
+## Teknologi yang Digunakan
 
 | Library         | Kegunaan                                             |
 |-----------------|-------------------------------------------------------|
@@ -111,7 +107,7 @@ news-reader-app/
 | `python-dateutil` | Mem-parsing berbagai format tanggal dari RSS          |
 | `lxml`          | Parser HTML/XML performa tinggi (dipakai trafilatura)   |
 
-## ⚠️ Catatan Penting
+## Catatan Penting
 
 - Aplikasi ini **tidak menyimpan/scraping** artikel secara ilegal — hanya
   mengambil ringkasan publik dari RSS feed resmi dan menampilkan tautan ke
@@ -122,10 +118,4 @@ news-reader-app/
   artikel penuh gagal diambil, aplikasi akan menampilkan ringkasan RSS
   sebagai fallback beserta tautan ke sumber asli.
 - Untuk penggunaan skala besar/komersial, disarankan menggunakan API resmi
-  dari penyedia berita (misalnya NewsAPI, atau kerja sama langsung dengan
-  penerbit) alih-alih scraping.
-
-## 📄 Lisensi
-
-Proyek ini dibuat untuk tujuan pembelajaran/demo. Silakan modifikasi dan
-gunakan sesuai kebutuhan Anda.
+  dari penyedia berita (misalnya NewsAPI, atau kerja sama langsung dengan penerbit) alih-alih scraping.
